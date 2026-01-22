@@ -3,183 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>薪資計算器 - 週/月切換版</title>
+    <title>善商薪資大師 2026 - 專業明細版</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
-        body { font-family: "Microsoft JhengHei", sans-serif; padding: 20px; background-color: #f0f2f5; }
-        .container { max-width: 1100px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #1a73e8; margin-bottom: 10px; }
-        .mode-switch { text-align: center; margin-bottom: 20px; }
-        .config { display: flex; gap: 20px; justify-content: center; align-items: center; margin-bottom: 20px; padding: 15px; background: #e8f0fe; border-radius: 8px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; }
-        th { background: #1a73e8; color: white; padding: 10px; position: sticky; top: 0; }
-        td { border: 1px solid #ddd; padding: 5px; text-align: center; }
-        select, input { padding: 5px; border: 1px solid #ccc; border-radius: 4px; }
-        .btn-calc { display: block; width: 100%; padding: 15px; background: #28a745; color: white; border: none; border-radius: 8px; font-size: 18px; cursor: pointer; font-weight: bold; }
-        .btn-calc:hover { background: #218838; }
-        .result-box { margin-top: 20px; padding: 20px; border-top: 2px solid #eee; display: grid; grid-template-columns: 1fr 1fr; }
-        .day-6-label { color: #e67e22; font-weight: bold; font-size: 11px; }
+        :root { --primary: #1a73e8; --bg: #f8f9fa; --card: #ffffff; --danger: #d93025; }
+        body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); margin: 0; padding: 15px; }
+        .container { max-width: 1000px; margin: auto; }
+        .card { background: var(--card); border-radius: 16px; padding: 25px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        h1 { text-align: center; color: var(--primary); }
+        .config-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; align-items: center; }
+        .scroll-container { overflow-x: auto; border-radius: 12px; border: 1px solid #eee; margin-top: 15px; }
+        table { width: 100%; border-collapse: collapse; min-width: 750px; }
+        th { background: #f1f3f4; padding: 10px; font-size: 13px; color: #5f6368; border: 1px solid #ddd; }
+        td { padding: 8px; border: 1px solid #eee; text-align: center; }
+        select { padding: 5px; width: 60px; }
+        input[type="number"] { padding: 5px; text-align: center; }
+        .input-narrow { width: 45px !important; }
+        .btn-calc { width: 100%; padding: 18px; background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 20px; font-weight: bold; cursor: pointer; margin-top: 20px; }
+        /* 報告明細樣式 */
+        .report-section { margin-top: 20px; }
+        .report-title { background: #34495e; color: white; padding: 8px 12px; font-weight: bold; border-radius: 4px; margin-bottom: 10px; }
+        .report-table { width: 100%; margin-bottom: 15px; font-size: 12px; }
+        .report-table th, .report-table td { border: 1px solid #ccc; padding: 6px; }
+        .final-pay-box { background: #e8f0fe; padding: 20px; border-radius: 12px; text-align: center; border: 2px solid var(--primary); }
+        .final-pay-box span { font-size: 32px; color: var(--danger); font-weight: 900; }
+        .btn-export { width: 100%; padding: 12px; background: #5f6368; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>薪資試算系統 (時薪人員)</h1>
-        
-        <div class="mode-switch">
-            <button onclick="switchMode('week')">週薪模式</button>
-            <button onclick="switchMode('month')">月薪模式</button>
-        </div>
-
-        <div class="config">
-            <div>時薪：<input type="number" id="baseRate" value="216" style="width: 60px;"> 元</div>
-            <div id="monthSelector" style="display:none;">
-                月份：<input type="month" id="selectedMonth" value="2026-01" onchange="initTable()">
-            </div>
-        </div>
-
-        <div style="max-height: 500px; overflow-y: auto;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>日期/星期</th><th>上班時間</th><th>下班時間</th><th>休息(h)</th><th>移動(h)</th><th>雙倍薪</th><th>小計</th>
-                    </tr>
-                </thead>
-                <tbody id="inputRows"></tbody>
-            </table>
-        </div>
-
-        <button class="btn-calc" onclick="calculateSalary()">開始計算總薪資</button>
-
-        <div class="result-box">
-            <div>
-                <p>總計薪資 (未扣除)：$ <span id="rawPay">0</span></p>
-                <p>二代健保 (1.91%)：$ <span id="insurance">0</span></p>
-                <p>福利金 (0.5%)：$ <span id="welfare">0</span></p>
-            </div>
-            <div style="text-align: right; border-left: 1px solid #eee; padding-left: 20px;">
-                <h2 style="color: #d93025; margin-top: 10px;">實領薪資：$ <span id="finalPay">0</span></h2>
-            </div>
+<div class="container">
+    <div class="card">
+        <h1>善商薪資大師 2026</h1>
+        <div class="config-grid">
+            <div>時薪(A)：<input type="number" id="baseRate" value="216" style="width:60px" onchange="saveData()"></div>
+            <div><input type="checkbox" id="hasAtt" onchange="saveData()"> <label for="hasAtt" style="font-weight:bold; color:#d35400;">全勤加給 (+10)</label></div>
+            <div>模式：<select id="mode" onchange="switchMode()" style="width:100px"><option value="week">週薪</option><option value="month">月薪</option></select>
+            <input type="month" id="selMonth" value="2026-01" onchange="switchMode()" style="display:none;"></div>
         </div>
     </div>
 
-    <script>
-        let currentMode = 'week';
-        const tableBody = document.getElementById('inputRows');
+    <div class="card">
+        <div class="scroll-container">
+            <table>
+                <thead><tr><th>日期</th><th>上班</th><th>下班</th><th>休息</th><th>移動</th><th>雙倍</th><th>狀態</th></tr></thead>
+                <tbody id="inputRows"></tbody>
+            </table>
+        </div>
+        <button class="btn-calc" onclick="calculateSalary()">產生 2026 詳細報告</button>
+    </div>
 
-        function switchMode(mode) {
-            currentMode = mode;
-            document.getElementById('monthSelector').style.display = mode === 'month' ? 'block' : 'none';
-            initTable();
-        }
+    <div id="reportCard" class="card" style="display:none;">
+        <h3 style="text-align:center;">薪資給付明細單</h3>
+        
+        <div class="report-section">
+            <div class="report-title">一、基數與時數</div>
+            <table class="report-table">
+                <tr><th>合計時薪(B)</th><th>一般時數</th><th>加班(1.34)</th><th>加班(1.67)</th><th>第6天(2.67)</th><th>深夜總時數</th></tr>
+                <tr><td id="res_B">0</td><td id="res_h_norm">0</td><td id="res_h_ot1">0</td><td id="res_h_ot2">0</td><td id="res_h_ot3">0</td><td id="res_h_night">0</td></tr>
+            </table>
+        </div>
 
-        function getTimeOptions(isMin = false) {
-            let options = '<option value="">--</option>';
-            if (isMin) {
-                ['00', '15', '30', '45'].forEach(m => options += `<option value="${m}">${m}</option>`);
-            } else {
-                for (let h = 0; h < 24; h++) {
-                    let hh = h.toString().padStart(2, '0');
-                    options += `<option value="${hh}">${hh}</option>`;
-                }
-            }
-            return options;
-        }
+        <div class="report-section">
+            <div class="report-title">二、收入明細 (先加後乘)</div>
+            <table class="report-table">
+                <tr><th>本薪收入</th><th>加班費合計</th><th>深夜加給合計</th><th>收入總計</th></tr>
+                <tr><td id="res_m_base">0</td><td id="res_m_ot">0</td><td id="res_m_night">0</td><td id="res_m_gross">0</td></tr>
+            </table>
+        </div>
 
-        function initTable() {
-            tableBody.innerHTML = '';
-            let daysToShow = [];
-            
-            if (currentMode === 'week') {
-                ['週一','週二','週三','週四','週五','週六','週日'].forEach(d => daysToShow.push(d));
-            } else {
-                const [year, month] = document.getElementById('selectedMonth').value.split('-');
-                const daysInMonth = new Date(year, month, 0).getDate();
-                for (let i = 1; i <= daysInMonth; i++) {
-                    const date = new Date(year, month - 1, i);
-                    const dayName = ['週日','週一','週二','週三','週四','週五','週六'][date.getDay()];
-                    daysToShow.push(`${month}/${i} (${dayName})`);
-                }
-            }
+        <div class="report-section">
+            <div class="report-title">三、2026 減項扣款</div>
+            <table class="report-table">
+                <tr><th>勞保費</th><th>健保費</th><th>二代健保</th><th>福利金</th><th>扣款合計</th></tr>
+                <tr><td id="res_m_lab">0</td><td id="res_m_hea">0</td><td id="res_m_gen2">0</td><td id="res_m_wel">0</td><td id="res_m_minus">0</td></tr>
+            </table>
+        </div>
 
-            daysToShow.forEach((label, i) => {
-                tableBody.innerHTML += `
-                    <tr>
-                        <td>${label}</td>
-                        <td><select id="sh_${i}">${getTimeOptions()}</select>:<select id="sm_${i}">${getTimeOptions(true)}</select></td>
-                        <td><select id="eh_${i}">${getTimeOptions()}</select>:<select id="em_${i}">${getTimeOptions(true)}</select></td>
-                        <td><input type="number" id="br_${i}" value="0" step="0.5" style="width:35px"></td>
-                        <td><input type="number" id="mo_${i}" value="0" step="0.5" style="width:35px"></td>
-                        <td><input type="checkbox" id="db_${i}"></td>
-                        <td><span id="sub_${i}">0</span><div id="label_${i}" class="day-6-label"></div></td>
-                    </tr>`;
-            });
-        }
-
-        function calculateSalary() {
-            const hourlyRate = parseFloat(document.getElementById('baseRate').value);
-            const rows = tableBody.rows.length;
-            let data = [];
-            let totalGross = 0;
-
-            for (let i = 0; i < rows; i++) {
-                const sH = document.getElementById(`sh_${i}`).value;
-                const sM = document.getElementById(`sm_${i}`).value;
-                const eH = document.getElementById(`eh_${i}`).value;
-                const eM = document.getElementById(`em_${i}`).value;
-                const br = parseFloat(document.getElementById(`br_${i}`).value) || 0;
-                const mo = parseFloat(document.getElementById(`mo_${i}`).value) || 0;
-                const db = document.getElementById(`db_${i}`).checked;
-                document.getElementById(`label_${i}`).innerText = '';
-
-                let workH = 0;
-                if (sH && sM && eH && eM) {
-                    let start = parseInt(sH) + (parseInt(sM)/60);
-                    let end = parseInt(eH) + (parseInt(eM)/60);
-                    if (end <= start) end += 24;
-                    workH = end - start - br;
-                }
-                data.push({ h: Math.max(0, workH + mo), db, id: i });
-            }
-
-            // 第六天判定邏輯：每 7 天為一週期，找出非雙倍日且有上班工時最小者
-            for (let w = 0; w < data.length; w += 7) {
-                let weekSlice = data.slice(w, w + 7);
-                let worked = weekSlice.filter(d => d.h > 0 && !d.db);
-                if (worked.length >= 6) {
-                    worked.sort((a, b) => a.h - b.h);
-                    let day6Id = worked[0].id;
-                    data[day6Id].isDay6 = true;
-                    document.getElementById(`label_${day6Id}`).innerText = '第6天加成';
-                }
-            }
-
-            data.forEach((day, i) => {
-                let pay = 0;
-                const h = day.h;
-                if (day.db) {
-                    pay = h * hourlyRate * 2.0;
-                } else if (day.isDay6) {
-                    if (h <= 2) pay = h * hourlyRate * 1.34;
-                    else if (h <= 8) pay = (2 * hourlyRate * 1.34) + ((h - 2) * hourlyRate * 1.67);
-                    else pay = (2 * hourlyRate * 1.34) + (6 * hourlyRate * 1.67) + ((h - 8) * hourlyRate * 2.67);
-                } else {
-                    if (h <= 8) pay = h * hourlyRate;
-                    else if (h <= 10) pay = (8 * hourlyRate) + ((h - 8) * hourlyRate * 1.34);
-                    else pay = (8 * hourlyRate) + (2 * hourlyRate * 1.34) + ((h - 10) * hourlyRate * 1.67);
-                }
-                document.getElementById(`sub_${i}`).innerText = Math.round(pay);
-                totalGross += pay;
-            });
-
-            const welfare = totalGross * 0.005;
-            const insurance = totalGross >= 28590 ? totalGross * 0.0191 : 0;
-
-            document.getElementById('rawPay').innerText = Math.round(totalGross);
-            document.getElementById('insurance').innerText = Math.round(insurance);
-            document.getElementById('welfare').innerText = Math.round(welfare);
-            document.getElementById('finalPay').innerText = Math.round(totalGross - insurance - welfare);
-        }
-
-        initTable();
-    </script>
+        <div class="final-pay-box">實領金額：<br><span>NT$ <span id="r_final">0</span></span></div>
+        <button class="btn-export" onclick="exportAsImage()">📸 下載薪資單圖片</button>
+    </div>
+</div>
+<script src="salary.js"></script>
 </body>
 </html>
